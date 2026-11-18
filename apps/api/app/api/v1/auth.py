@@ -29,7 +29,9 @@ defines the HTTP endpoints:
 - POST /refresh
 - POST /logout
 - GET /me
-- It reads requests and cookies, applies CSRF checks, calls AuthService, sets status codes, and creates or clears authentication cookies.
+- It reads requests and cookies, applies CSRF checks, 
+calls AuthService, sets status codes, and creates or 
+clears authentication cookies.
 
 """
 
