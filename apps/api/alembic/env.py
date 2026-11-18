@@ -25,7 +25,9 @@ target_metadata = Base.metadata
 This file is run when Alembic runs. 
 It loads the database URL and SQLAlchemy model metadata,
 then applies or generates migrations.
+
 """
+
 def run_migrations_offline() -> None:
     context.configure(
         url=database_url,
