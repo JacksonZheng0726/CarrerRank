@@ -27,7 +27,6 @@ It loads the database URL and SQLAlchemy model metadata,
 then applies or generates migrations.
 
 """
-
 def run_migrations_offline() -> None:
     context.configure(
         url=database_url,
@@ -39,12 +38,10 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-
 def do_run_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
     with context.begin_transaction():
         context.run_migrations()
-
 
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
@@ -57,7 +54,6 @@ async def run_async_migrations() -> None:
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
-
 
 def run_migrations_online() -> None:
     asyncio.run(
