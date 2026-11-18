@@ -1,0 +1,135 @@
+name: careerrank
+
+x-api-environment: &api-environment
+  APP_ENV: ${APP_ENV:-development}
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  API_URL: ${API_URL:-http://localhost:8000}
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-careerrank}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-careerrank}
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+  JWT_ISSUER: ${JWT_ISSUER:-careerrank-api}
+  JWT_AUDIENCE: ${JWT_AUDIENCE:-careerrank-web}
+  JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-30}
+  JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-14}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+  CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:3000"]}'
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-careerrank}
+      POSTGRES_USER: ${POSTGRES_USER:-careerrank}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  postgres-test:
+    profiles: ["test"]
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    environment:
+      POSTGRES_DB: careerrank_test
+      POSTGRES_USER: ${POSTGRES_USER:-careerrank}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  migrate:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment: *api-environment
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment: *api-environment
+    init: true
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_URL: http://api:8000
+    environment:
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      API_URL: http://api:8000
+    init: true
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+
+volumes:
+  postgres_data:
+  redis_data:

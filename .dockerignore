@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+**/.next
+**/.venv
+**/__pycache__
+**/coverage
+**/node_modules
+**/*.tsbuildinfo
+apps/api
+docs
+*.log
