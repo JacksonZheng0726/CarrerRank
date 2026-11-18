@@ -23,6 +23,8 @@ services/auth.py         Authentication business logic
     ↓
 repositories + models    Database operations
 """
+
+
 class CredentialsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -37,12 +39,14 @@ class CredentialsRequest(BaseModel):
             raise ValueError("Password must be between 12 and 128 characters")
         return value
 
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     email: EmailStr
     created_at: datetime
+
 
 class CandidateProfileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -58,8 +62,10 @@ class CandidateProfileRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class AuthResponse(BaseModel):
     user: UserRead
+
 
 class MeResponse(BaseModel):
     user: UserRead
